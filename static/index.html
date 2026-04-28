@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Movie Recommendations | MovieRulz RL</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <nav>
+        <div class="logo">MOVIERULZ<span style="color: var(--accent-secondary)">AI</span></div>
+        
+        <div class="nav-links">
+            <a href="#" class="nav-link active" id="navHome">Home</a>
+            <a href="#" class="nav-link" id="navTrending">Trending</a>
+            <a href="#" class="nav-link" id="navCategories">Categories</a>
+        </div>
+
+        <div class="search-container">
+            <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim)"></i>
+            <input type="text" id="searchInput" placeholder="Search movies..." style="padding-left: 45px;">
+        </div>
+
+        <div class="user-actions" id="userActions">
+            <button class="btn btn-login" id="loginBtn">Login</button>
+            <button class="btn btn-play" id="signupBtn" style="padding: 8px 20px;">Sign Up</button>
+        </div>
+        <div class="user-profile" id="userProfile" style="display: none; position: relative;">
+            <div id="userTrigger" style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 10px; border-radius: 20px; background: var(--glass-bg);">
+                <i class="fas fa-user-circle" style="font-size: 1.5rem; color: var(--accent-secondary)"></i>
+                <span id="userNameDisplay">Guest</span>
+                <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: var(--text-dim)"></i>
+            </div>
+            
+            <!-- Profile Dropdown Menu -->
+            <div class="profile-menu" id="profileMenu" style="display: none;">
+                <div class="menu-header">
+                    <p id="menuUserEmail" style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;"></p>
+                    <span class="badge" id="ownerBadge" style="display: none; background: linear-gradient(135deg, #ffd700, #ffa500); color: #000; font-size: 0.7rem;">OWNER</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 10px 0;">
+                
+                <div class="menu-item" id="ownerAnalyzeBtn" style="display: none;">
+                    <i class="fas fa-chart-line"></i> Analyze Mood
+                </div>
+                <div class="menu-item" id="ownerScrapeBtn" style="display: none;">
+                    <i class="fas fa-sync-alt"></i> Fetch New Movies
+                </div>
+                <div class="menu-item" id="ownerHdBtn" style="display: none;">
+                    <i class="fas fa-magic"></i> Upgrade HD Posters
+                </div>
+                <div class="menu-item" id="ownerSendEventBtn" style="display: none;">
+                    <i class="fas fa-bullhorn"></i> Send Event Info
+                </div>
+                
+                <div class="profile-filtration" style="margin-top: 15px;">
+
+                    <div class="profile-dropdowns" style="margin-top: 15px;">
+                        <div class="mini-filter">
+                            <label style="font-size: 0.7rem; color: var(--text-dim);">Language</label>
+                            <select id="langFilter" class="profile-select">
+                                <option value="All">All Languages</option>
+                            </select>
+                        </div>
+                        <div class="mini-filter" style="margin-top: 8px;">
+                            <label style="font-size: 0.7rem; color: var(--text-dim);">Genre</label>
+                            <select id="genreFilter" class="profile-select">
+                                <option value="All">All Genres</option>
+                            </select>
+                        </div>
+                        <div class="mini-filter" style="margin-top: 8px;">
+                            <label style="font-size: 0.7rem; color: var(--text-dim);">Type</label>
+                            <select id="typeFilter" class="profile-select">
+                                <option value="All">All Types</option>
+                            </select>
+                        </div>
+                        <div class="mini-filter" style="margin-top: 8px;">
+                            <label style="font-size: 0.7rem; color: var(--text-dim);">Release Year</label>
+                            <select id="yearFilter" class="profile-select">
+                                <option value="All">All Years</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-play" id="applyFilters" style="width: 100%; margin-top: 12px; font-size: 0.8rem; padding: 8px;">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+
+                <div class="menu-item" onclick="showView('watchlist')">
+                    <i class="fas fa-bookmark"></i> My Watchlist
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 10px 0;">
+                <div class="menu-item" id="logoutBtn" style="color: #ff4757;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="login-card" style="position: relative;">
+            <i class="fas fa-times" id="modalCloseX" style="position: absolute; right: 25px; top: 25px; cursor: pointer; color: var(--text-dim); font-size: 1.2rem; transition: 0.3s;"></i>
+            <h2 id="modalTitle">Login</h2>
+            <p id="modalSub">Welcome back to MovieRulz AI</p>
+
+            <button class="btn btn-google" id="googleLoginBtn" style="width: 100%; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 12px; background: white; color: #1f1f1f; border: 1px solid #dadce0; padding: 10px; border-radius: 8px; font-weight: 500; cursor: pointer;">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="Google">
+                Continue with Google
+            </button>
+
+            <div style="display: flex; align-items: center; margin: 1rem 0; color: var(--text-dim);">
+                <hr style="flex: 1; border: 0; border-top: 1px solid var(--glass-border);">
+                <span style="padding: 0 10px; font-size: 0.8rem;">OR</span>
+                <hr style="flex: 1; border: 0; border-top: 1px solid var(--glass-border);">
+            </div>
+            
+            <div class="input-group" id="emailGroup" style="display: none;">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="emailInput" placeholder="Email Address">
+            </div>
+
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="usernameInput" placeholder="Username">
+            </div>
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="passwordInput" placeholder="Password">
+            </div>
+            
+            <button class="btn btn-play" id="submitLogin" style="width: 100%; margin-top: 1rem; padding: 12px;">
+                Log In
+            </button>
+            
+            <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-dim);">
+                <span id="toggleText">Don't have an account?</span> 
+                <a href="#" id="toggleMode" style="color: var(--accent-secondary); text-decoration: none; font-weight: bold;">Sign Up</a>
+            </p>
+            
+            <button class="btn-text" id="closeLogin">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Owner Dashboard Modal -->
+    <div class="modal-overlay" id="ownerModal">
+        <div class="login-card" style="max-width: 600px;">
+            <i class="fas fa-times" id="ownerModalClose" style="position: absolute; right: 25px; top: 25px; cursor: pointer; color: var(--text-dim); font-size: 1.2rem;"></i>
+            <h2 id="ownerModalTitle">Owner Dashboard</h2>
+            
+            <div id="moodAnalysisView" style="display: none;">
+                <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+                    <div class="stat-card" style="background: var(--glass-bg); padding: 15px; border-radius: 12px; text-align: center;">
+                        <p style="font-size: 0.8rem; color: var(--text-dim);">Total Users</p>
+                        <h3 id="statTotalUsers">0</h3>
+                    </div>
+                    <div class="stat-card" style="background: var(--glass-bg); padding: 15px; border-radius: 12px; text-align: center;">
+                        <p style="font-size: 0.8rem; color: var(--text-dim);">Active Now</p>
+                        <h3 id="statActiveNow">0</h3>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <p style="margin-bottom: 10px; font-weight: bold;">User Mood Distribution</p>
+                    <div id="moodChart" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="sendEventView" style="display: none;">
+                <div class="input-group" style="margin-top: 20px;">
+                    <i class="fas fa-film"></i>
+                    <input type="text" id="eventTitle" placeholder="Movie Title (e.g. Pushpa 2)">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-calendar-alt"></i>
+                    <input type="text" id="eventDate" placeholder="Release Date">
+                </div>
+                <textarea id="eventDesc" placeholder="Event Description..." style="width: 100%; height: 100px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; color: white; padding: 15px; margin-top: 10px; font-family: inherit;"></textarea>
+                <button class="btn btn-play" id="broadcastEventBtn" style="width: 100%; margin-top: 15px; padding: 12px;">
+                    Broadcast New Release Event
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <header class="hero" id="heroSection">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 id="heroTitle">Smarter Recommendations</h1>
+            <div class="hero-meta">
+                <span id="heroYear">2026</span>
+                <span id="heroType">Movie</span>
+                <span id="heroRating" style="background: var(--accent-secondary); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: bold;">AI 9.8</span>
+            </div>
+            <p id="heroSummary">Our Reinforcement Learning AI learns your taste in real-time. Like movies to train your personal recommendation engine.</p>
+            <div class="hero-btns">
+                <button class="btn btn-play" id="heroWatchBtn">
+                    <i class="fas fa-play"></i> Watch Now
+                </button>
+                <button class="btn btn-watchlist" id="heroWatchlistBtn">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Home View -->
+    <div id="homeView">
+        <!-- Continue Watching Swimlane -->
+        <section id="continueWatchingSection" class="swimlane-section" style="display: none;">
+            <div class="section-title-wrap">
+                <h2>Continue Watching <span class="ai-tag">Resume</span></h2>
+                <div class="slider-controls">
+                    <button class="slider-btn prev" id="btn-prev-continueWatchingGrid"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-btn next" id="btn-next-continueWatchingGrid"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track" id="continueWatchingGrid"></div>
+            </div>
+        </section>
+
+        <section id="recommendations">
+            <h2>For You <span style="font-size: 0.9rem; font-weight: normal; color: var(--text-dim);">(AI Predicted)</span></h2>
+            <div class="movie-grid" id="recGrid">
+                <!-- Cards will be injected here -->
+            </div>
+        </section>
+
+        <section id="latestMoviesSection" class="swimlane-section" style="display: none;">
+            <div class="section-title-wrap">
+                <h2>Latest Movies <span class="ai-tag">New in 2025-26</span></h2>
+                <div class="slider-controls">
+                    <button class="slider-btn prev" id="btn-prev-latestGrid"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-btn next" id="btn-next-latestGrid"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track" id="latestGrid"></div>
+            </div>
+        </section>
+
+        <section id="recActionSection" class="swimlane-section" style="display: none;">
+            <div class="section-title-wrap">
+                <h2>Action Thrillers <span class="ai-tag">(Ranked For You)</span></h2>
+                <div class="slider-controls">
+                    <button class="slider-btn prev" id="btn-prev-recActionGrid"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-btn next" id="btn-next-recActionGrid"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track" id="recActionGrid"></div>
+            </div>
+        </section>
+
+        <section id="recDramaSection" class="swimlane-section" style="display: none;">
+            <div class="section-title-wrap">
+                <h2>Drama & Romance <span class="ai-tag">(Ranked For You)</span></h2>
+                <div class="slider-controls">
+                    <button class="slider-btn prev" id="btn-prev-recDramaGrid"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-btn next" id="btn-next-recDramaGrid"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track" id="recDramaGrid"></div>
+            </div>
+        </section>
+        
+        <section id="recTeluguSection" class="swimlane-section" style="display: none;">
+            <div class="section-title-wrap">
+                <h2>Telugu Cinema <span class="ai-tag">(Ranked For You)</span></h2>
+                <div class="slider-controls">
+                    <button class="slider-btn prev" id="btn-prev-recTeluguGrid"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-btn next" id="btn-next-recTeluguGrid"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-track" id="recTeluguGrid"></div>
+            </div>
+        </section>
+
+        <section id="recSportsSection" style="display: none;">
+            <h2 style="display: flex; align-items: center;">Non-Stop Sports <span class="live-pulse">LIVE</span></h2>
+            <div class="movie-grid" id="recSportsGrid"></div>
+        </section>
+    </div>
+
+    <!-- Trending View -->
+    <div id="trendingView" style="display: none;">
+        <section>
+            <div class="section-header">
+                <button class="btn-back" onclick="showView('home')"><i class="fas fa-chevron-left"></i> Back</button>
+                <h2>Trending Now <i class="fas fa-fire" style="color: #ff4757"></i></h2>
+            </div>
+            <div class="movie-grid" id="trendingGrid"></div>
+        </section>
+    </div>
+
+    <!-- Categories View -->
+    <div id="categoriesView" style="display: none;">
+        <section>
+            <div class="section-header">
+                <button class="btn-back" onclick="showView('home')"><i class="fas fa-chevron-left"></i> Back</button>
+                <h2>Explore Categories</h2>
+            </div>
+            <div class="category-grid" id="categoryGrid">
+                <!-- Genre cards will be injected here -->
+            </div>
+        </section>
+    </div>
+
+    <!-- Watchlist View -->
+    <div id="watchlistView" style="display: none;">
+        <section>
+            <div class="section-header">
+                <button class="btn-back" onclick="showView('home')"><i class="fas fa-chevron-left"></i> Back</button>
+                <h2>My Watchlist <i class="fas fa-bookmark" style="color: var(--accent-secondary)"></i></h2>
+            </div>
+            <div class="movie-grid" id="watchlistGrid">
+                <!-- Saved movies will be injected here -->
+            </div>
+        </section>
+    </div>
+
+    <section id="searchSection" style="display: none;">
+        <div class="section-header">
+            <button class="btn-back" onclick="showView('home')"><i class="fas fa-chevron-left"></i> Back</button>
+            <h2>Search Results</h2>
+        </div>
+        <div class="movie-grid" id="searchGrid"></div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <div class="logo">MOVIERULZ<span style="color: var(--accent-secondary)">AI</span></div>
+                <p>The world's first AI-powered movie recommendation engine built for true enthusiasts.</p>
+                <div class="socials">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>About AI</h3>
+                <p>Our Reinforcement Learning model learns your preferences and evolves with your taste. The more you watch, the better it gets.</p>
+                <p style="margin-top: 15px; color: var(--accent-secondary); font-weight: 600; font-size: 0.9rem;">
+                    <i class="fas fa-database"></i> Powering 6,126+ Movies
+                </p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 MovieRulz AI Engine. All rights reserved.
+        </div>
+    </footer>
+
+    <div id="toast">AI Model Updated! 🚀</div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+    <script src="static/script.js?v=2"></script>
+</body>
+</html>
