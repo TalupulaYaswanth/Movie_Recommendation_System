@@ -3,9 +3,10 @@ const firebaseConfig = {
   apiKey: "AIzaSyBV_6sZ-RYlhcVI6kpG-RdtCZr8tQ14tbU",
   authDomain: "movie-47dab.firebaseapp.com",
   projectId: "movie-47dab",
-  storageBucket: "movie-47dab.appspot.com",
-  messagingSenderId: "100234567890",
-  appId: "1:100234567890:web:abcdef123456"
+  storageBucket: "movie-47dab.firebasestorage.app",
+  messagingSenderId: "514442944792",
+  appId: "1:514442944792:web:1f1677f2a40c37f2b43e6d",
+  measurementId: "G-CL90684H6B"
 };
 
 // --- PLAYER PROGRESS TRACKING ---
