@@ -1,9 +1,9 @@
 // --- FIREBASE INITIALIZATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyBV_6sZ-RYlhcVI6kpG-RdtCZr8tQ14tbU",
-  authDomain: "movierulz-ai.firebaseapp.com",
-  projectId: "movierulz-ai",
-  storageBucket: "movierulz-ai.appspot.com",
+  authDomain: "movie-47dab.firebaseapp.com",
+  projectId: "movie-47dab",
+  storageBucket: "movie-47dab.appspot.com",
   messagingSenderId: "100234567890",
   appId: "1:100234567890:web:abcdef123456"
 };
