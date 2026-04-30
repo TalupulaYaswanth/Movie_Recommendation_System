@@ -1,4 +1,4 @@
-# MovieRulz RL AI - Smart Movie Streaming Hub 🍿
+# VORTEX - Smart Movie Streaming Hub 🍿
 
 MovieRulz RL is a high-performance, metadata-rich movie streaming platform powered by Reinforcement Learning (RL) and AI recommendations. It features a cinematic UI, personalized swimlanes, and persistent watch history.
 
