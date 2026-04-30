@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: movierulz-ai-hub
+    name: vortex-ai-hub
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
