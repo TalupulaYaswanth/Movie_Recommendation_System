@@ -821,11 +821,18 @@ async function _oldUpdateHero() {
 }
 
 async function fetchTrending() {
-    trendingGrid.innerHTML = '<div class="shimmer" style="height: 300px; width: 100%; border-radius: 20px;"></div>';
+    trendingGrid.innerHTML = `
+        <div class="loader-container" style="display: flex;">
+            <div class="vortex-loader"></div>
+            <div class="loader-text">Loading Trending Blockbusters...</div>
+        </div>
+    `;
     try {
         const response = await fetch('/api/trending');
         const data = await response.json();
-        renderMovies(data.results, trendingGrid);
+        setTimeout(() => {
+            renderMovies(data.results, trendingGrid);
+        }, 600);
     } catch (err) {
         console.error("Failed to fetch trending", err);
     }
@@ -930,6 +937,15 @@ async function searchMovies(query) {
         return;
     }
 
+    // Show Loader State
+    showView('search');
+    searchGrid.innerHTML = `
+        <div class="loader-container" style="display: flex;">
+            <div class="vortex-loader"></div>
+            <div class="loader-text">Analyzing VORTEX Database...</div>
+        </div>
+    `;
+
     try {
         const params = new URLSearchParams({
             uid: currentUID,
@@ -943,8 +959,10 @@ async function searchMovies(query) {
         const response = await fetch(`/api/search?${params.toString()}`);
         const data = await response.json();
         
-        showView('search'); // Switch to full-page search mode
-        renderMovies(data.results, searchGrid);
+        // Slight delay to make the transition feel smoother and premium
+        setTimeout(() => {
+            renderMovies(data.results, searchGrid);
+        }, 600);
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -1137,6 +1155,12 @@ async function toggleWatchlist(movieLink, title, imageLink, btn, event) {
 }
 
 async function fetchWatchlist() {
+    watchlistGrid.innerHTML = `
+        <div class="loader-container" style="display: flex;">
+            <div class="vortex-loader"></div>
+            <div class="loader-text">Retrieving Your Watchlist...</div>
+        </div>
+    `;
     try {
         const response = await fetch(`/api/watchlist?uid=${encodeURIComponent(currentUID)}`);
         const data = await response.json();
@@ -1144,7 +1168,8 @@ async function fetchWatchlist() {
         // Update the local set as well
         userWatchlist = new Set(data.map(m => m['Movie Link']));
         
-        if (data.length === 0) {
+        setTimeout(() => {
+            if (data.length === 0) {
             watchlistGrid.innerHTML = `
                 <div style="text-align: center; grid-column: 1/-1; padding: 50px; color: var(--text-dim);">
                     <i class="fas fa-bookmark" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.2;"></i>
@@ -1156,6 +1181,7 @@ async function fetchWatchlist() {
         } else {
             renderMovies(data, watchlistGrid, true);
         }
+        }, 600);
     } catch (err) {
         console.error("Watchlist fetch failed", err);
     }
