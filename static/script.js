@@ -147,6 +147,7 @@ navTrending.addEventListener('click', (e) => { e.preventDefault(); showView('tre
 navCategories.addEventListener('click', (e) => { e.preventDefault(); showView('categories'); });
 
 let currentUID = localStorage.getItem('movieUID') || "guest";
+let searchController = null;
 
 // Sync Auth with Backend
 async function syncAuth(user) {
@@ -902,6 +903,8 @@ function renderCategories(genres) {
         card.onclick = () => {
             const { genre: genreEl } = getFilterEls();
             if (genreEl) genreEl.value = genre;
+            // Clear search bar to avoid confusion when a category is selected
+            if (searchInput) searchInput.value = "";
             searchMovies(""); // Trigger search with new filter
         };
         categoryGrid.appendChild(card);
@@ -931,14 +934,20 @@ async function searchMovies(query) {
     const tVal = type ? type.value : 'All';
     const yVal = year ? year.value : 'All';
 
-    // Show search view if any filter or query is active
+    // If everything is 'All' and no query, go back to home
     if (!query && lVal === 'All' && gVal === 'All' && tVal === 'All' && yVal === 'All') {
         showView('home');
         return;
     }
 
-    // Show Loader State
+    // Cancel any ongoing search to prevent race conditions
+    if (searchController) searchController.abort();
+    searchController = new AbortController();
+
+    // Ensure search view is visible
     showView('search');
+    
+    // Show Premium Loader
     searchGrid.innerHTML = `
         <div class="loader-container" style="display: flex;">
             <div class="vortex-loader"></div>
@@ -956,17 +965,24 @@ async function searchMovies(query) {
             year: yVal
         });
         
-        const response = await fetch(`/api/search?${params.toString()}`);
+        const response = await fetch(`/api/search?${params.toString()}`, {
+            signal: searchController.signal
+        });
         const data = await response.json();
         
-        // Slight delay to make the transition feel smoother and premium
+        // We still keep a small delay but make it more robust
         setTimeout(() => {
-            renderMovies(data.results, searchGrid);
-        }, 600);
+            // Only render if this is still the active search
+            if (!searchController.signal.aborted) {
+                renderMovies(data.results, searchGrid);
+            }
+        }, 400); // Reduced slightly for better responsiveness
         
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
+        if (err.name === 'AbortError') return; // Expected
         console.error("Search failed", err);
+        searchGrid.innerHTML = '<p style="color: #ff4757; text-align: center; padding: 50px;">Search failed. Please check your connection.</p>';
     }
 }
 
@@ -1192,3 +1208,10 @@ fetchMetadata();
 fetchRecommendations();
 updateHero();
 showView('home');
+
+// Make the search icon clickable
+const searchIcon = document.querySelector('.search-container i.fa-search');
+if (searchIcon) {
+    searchIcon.style.cursor = 'pointer';
+    searchIcon.onclick = () => searchMovies(searchInput.value);
+}
