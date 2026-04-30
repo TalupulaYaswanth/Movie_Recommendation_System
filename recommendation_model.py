@@ -158,7 +158,7 @@ class MovieEngine:
                 if len(indices) == 0: return []
                 
                 subset_vectors = vectors[indices]
-                subset_df = df.iloc[indices]
+                subset_df = df.iloc[indices].copy()
                 
                 A_inv = np.linalg.inv(self.A)
                 theta = A_inv @ self.b
@@ -166,25 +166,25 @@ class MovieEngine:
                 if self.last_interactions:
                     for v in self.last_interactions[-10:]: mood_boost += v * 0.4
                 
-                scores = []
-                for i in range(len(subset_vectors)):
-                    x = subset_vectors[i].reshape(-1, 1)
-                    mean = (x.T @ theta)[0, 0]
-                    var = np.sqrt(x.T @ A_inv @ x)[0, 0]
-                    mood_factor = np.dot(subset_vectors[i], mood_boost)
-                    p = mean + (self.alpha * var) + mood_factor + random.uniform(0, 0.03)
-                    
-                    # Request 5: Live priority boost
-                    m_type = str(subset_df.iloc[i]['Type']).strip().lower()
-                    if m_type in ['live', 'sport', 'event']:
-                        p += 2.0 # Force live events to the top
-                        
-                    scores.append(p)
+                # Vectorized scoring
+                # mean = x.T @ theta -> X @ theta
+                # var = sqrt(x.T @ A_inv @ x) -> sqrt(diag(X @ A_inv @ X.T))
+                means = (subset_vectors @ theta).flatten()
+                variances = np.sqrt(np.sum((subset_vectors @ A_inv) * subset_vectors, axis=1))
+                mood_factors = subset_vectors @ mood_boost
+                
+                scores = means + (self.alpha * variances) + mood_factors + np.random.uniform(0, 0.03, size=len(means))
+                
+                # Live priority boost
+                live_mask = subset_df['Type'].str.strip().str.lower().isin(['live', 'sport', 'event']).values
+                scores[live_mask] += 2.0
                     
                 top_rel_indices = np.argsort(scores)[::-1][:n]
                 return subset_df.iloc[top_rel_indices].to_dict('records')
             except Exception as e:
                 print(f"Recommendation Error: {e}")
+                import traceback
+                traceback.print_exc()
                 return self.movies_df.head(n).to_dict('records')
 
     def rank_custom_subset(self, df_subset, n=200):
@@ -198,17 +198,15 @@ class MovieEngine:
                 indices = df_subset.index.tolist()
                 subset_vectors = self.movie_vectors[indices]
                 
-                scores = []
-                for i in range(len(subset_vectors)):
-                    x = subset_vectors[i].reshape(-1, 1)
-                    p = (x.T @ theta)[0, 0] + (self.alpha * np.sqrt(x.T @ A_inv @ x)[0, 0])
-                    
-                    # Apply Live boost in search too
-                    m_type = str(df_subset.iloc[i]['Type']).strip().lower()
-                    if m_type in ['live', 'sport', 'event']:
-                        p += 2.0
-                        
-                    scores.append(p)
+                # Vectorized scoring
+                means = (subset_vectors @ theta).flatten()
+                variances = np.sqrt(np.sum((subset_vectors @ A_inv) * subset_vectors, axis=1))
+                
+                scores = means + (self.alpha * variances)
+                
+                # Apply Live boost in search too
+                live_mask = df_subset['Type'].str.strip().str.lower().isin(['live', 'sport', 'event']).values
+                scores[live_mask] += 2.0
                 
                 df_ranked = df_subset.copy()
                 df_ranked['_score'] = scores
