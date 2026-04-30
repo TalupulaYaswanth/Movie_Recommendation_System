@@ -195,7 +195,7 @@ function openAuthModal(mode) {
 function updateModalUI() {
     if (isLoginMode) {
         modalTitle.innerText = "Login";
-        modalSub.innerText = "Welcome back to MovieRulz AI";
+        modalSub.innerText = "Welcome back to VORTEX";
         emailGroup.style.display = 'none';
         submitLogin.innerText = "Log In";
         toggleText.innerText = "Don't have an account?";
@@ -558,109 +558,105 @@ function initSliderControls(trackId) {
 async function fetchRecommendations(isMoodShift = false) {
     try {
         const uid = encodeURIComponent(currentUID);
-        const seenMovieLinks = new Set(); // TRACKER: Ensure no movie repeats on the entire page
         
-        // Reset swimlanes
-        ['recGrid', 'recActionGrid', 'recDramaGrid', 'recTeluguGrid', 'latestGrid'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && isMoodShift) {
-                el.classList.remove('grid-refresh');
-                void el.offsetWidth; // Trigger reflow
-                el.classList.add('grid-refresh');
+        // Reset swimlanes animation if needed
+        if (isMoodShift) {
+            ['recGrid', 'recActionGrid', 'recDramaGrid', 'recTeluguGrid', 'latestGrid'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('grid-refresh');
+                    void el.offsetWidth; // Trigger reflow
+                    el.classList.add('grid-refresh');
+                }
+            });
+        }
+
+        // Parallel fetch all data segments
+        const [resGen, resLatest, resAction, resDrama, resTelugu, resSports, resProg] = await Promise.all([
+            fetch(`/api/recommend?uid=${uid}&n=20`),
+            fetch(`/api/search?uid=${uid}&year=2026`),
+            fetch(`/api/recommend?uid=${uid}&n=30&genre=Action`),
+            fetch(`/api/recommend?uid=${uid}&n=30&genre=Drama`),
+            fetch(`/api/recommend?uid=${uid}&n=30&lang=Telugu`),
+            fetch(`/api/recommend?uid=${uid}&n=20&mtype=Sport`),
+            currentUID !== "guest" ? fetch(`/api/progress?uid=${uid}`) : Promise.resolve({ json: () => [] })
+        ]);
+
+        const [dataGen, dataLatest, dataAction, dataDrama, dataTelugu, dataSports, dataProg] = await Promise.all([
+            resGen.json(), resLatest.json(), resAction.json(), resDrama.json(), resTelugu.json(), resSports.json(), resProg.json()
+        ]);
+
+        const seenMovieLinks = new Set();
+
+        // Helper to filter duplicates across the entire page
+        const filterUnique = (movies) => (movies || []).filter(m => {
+            if (seenMovieLinks.has(m['Movie Link'])) return false;
+            seenMovieLinks.add(m['Movie Link']);
+            return true;
+        });
+
+        // Render sections
+        renderMovies(filterUnique(dataGen.results), recGrid);
+
+        // Latest
+        const filteredLatest = filterUnique(dataLatest.results);
+        const latestSec = document.getElementById('latestMoviesSection');
+        if (latestSec) {
+            latestSec.style.display = filteredLatest.length > 0 ? 'block' : 'none';
+            if (filteredLatest.length > 0) {
+                renderMovies(filteredLatest, document.getElementById('latestGrid'));
+                initSliderControls('latestGrid');
             }
-        });
-
-        // Reset visibility for categorized segments
-        ['latestMoviesSection', 'recActionSection', 'recDramaSection', 'recTeluguSection', 'recSportsSection', 'continueWatchingSection'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        
-        // 1. General Recommendations (Top Priority)
-        const resGen = await fetch(`/api/recommend?uid=${uid}&n=20`);
-        const dataGen = await resGen.json();
-        const filteredGen = dataGen.results.filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        renderMovies(filteredGen, recGrid);
-
-        // 1.5 Latest Movies Swimlane (2026)
-        const resLatest = await fetch(`/api/search?uid=${uid}&year=2026`);
-        const dataLatest = await resLatest.json();
-        const filteredLatest = dataLatest.results.filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        if (filteredLatest.length > 0) {
-            document.getElementById('latestMoviesSection').style.display = 'block';
-            renderMovies(filteredLatest, document.getElementById('latestGrid'));
-            initSliderControls('latestGrid');
         }
 
-        // 2. Action Swimlane
-        const resAction = await fetch(`/api/recommend?uid=${uid}&n=30&genre=Action`);
-        const dataAction = await resAction.json();
-        const filteredAction = dataAction.results.filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        if (filteredAction.length > 0) {
-            document.getElementById('recActionSection').style.display = 'block';
-            renderMovies(filteredAction, recActionGrid);
-            initSliderControls('recActionGrid');
+        // Action
+        const filteredAction = filterUnique(dataAction.results);
+        const actionSec = document.getElementById('recActionSection');
+        if (actionSec) {
+            actionSec.style.display = filteredAction.length > 0 ? 'block' : 'none';
+            if (filteredAction.length > 0) {
+                renderMovies(filteredAction, recActionGrid);
+                initSliderControls('recActionGrid');
+            }
         }
 
-        // 3. Drama Swimlane
-        const resDrama = await fetch(`/api/recommend?uid=${uid}&n=30&genre=Drama`);
-        const dataDrama = await resDrama.json();
-        const filteredDrama = dataDrama.results.filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        if (filteredDrama.length > 0) {
-            document.getElementById('recDramaSection').style.display = 'block';
-            renderMovies(filteredDrama, recDramaGrid);
-            initSliderControls('recDramaGrid');
+        // Drama
+        const filteredDrama = filterUnique(dataDrama.results);
+        const dramaSec = document.getElementById('recDramaSection');
+        if (dramaSec) {
+            dramaSec.style.display = filteredDrama.length > 0 ? 'block' : 'none';
+            if (filteredDrama.length > 0) {
+                renderMovies(filteredDrama, recDramaGrid);
+                initSliderControls('recDramaGrid');
+            }
         }
 
-        // 4. Telugu Swimlane
-        const resTelugu = await fetch(`/api/recommend?uid=${uid}&n=30&lang=Telugu`);
-        const dataTelugu = await resTelugu.json();
-        const filteredTelugu = dataTelugu.results.filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        if (filteredTelugu.length > 0) {
-            document.getElementById('recTeluguSection').style.display = 'block';
-            renderMovies(filteredTelugu, recTeluguGrid);
-            initSliderControls('recTeluguGrid');
+        // Telugu
+        const filteredTelugu = filterUnique(dataTelugu.results);
+        const teluguSec = document.getElementById('recTeluguSection');
+        if (teluguSec) {
+            teluguSec.style.display = filteredTelugu.length > 0 ? 'block' : 'none';
+            if (filteredTelugu.length > 0) {
+                renderMovies(filteredTelugu, recTeluguGrid);
+                initSliderControls('recTeluguGrid');
+            }
         }
 
-        // 5. Sports Swimlane
-        const resSports = await fetch(`/api/recommend?uid=${uid}&n=20&mtype=Sport`);
-        const dataSports = await resSports.json();
-        const filteredSports = (dataSports.results || []).filter(m => {
-            if (seenMovieLinks.has(m['Movie Link'])) return false;
-            seenMovieLinks.add(m['Movie Link']);
-            return true;
-        });
-        if (filteredSports.length > 0) {
-            document.getElementById('recSportsSection').style.display = 'block';
-            renderMovies(filteredSports, recSportsGrid);
+        // Sports
+        const filteredSports = filterUnique(dataSports.results || []);
+        const sportsSec = document.getElementById('recSportsSection');
+        if (sportsSec) {
+            sportsSec.style.display = filteredSports.length > 0 ? 'block' : 'none';
+            if (filteredSports.length > 0) {
+                renderMovies(filteredSports, recSportsGrid);
+            }
         }
 
-        // 6. Continue Watching (Excluded from global seen filter to allow resume)
-        if (currentUID !== "guest") {
-            const resProg = await fetch(`/api/progress?uid=${uid}`);
-            const dataProg = await resProg.json();
+        // Progress
+        const progSec = document.getElementById('continueWatchingSection');
+        if (progSec) {
+            progSec.style.display = dataProg.length > 0 ? 'block' : 'none';
             if (dataProg.length > 0) {
-                document.getElementById('continueWatchingSection').style.display = 'block';
                 renderContinueWatching(dataProg);
             }
         }
@@ -843,31 +839,40 @@ const getFilterEls = () => ({
     apply: document.getElementById('applyFilters')
 });
 
-// Fetch Metadata (Filters)
+// Fetch Metadata (Filters) with Caching
+let cachedMetadata = null;
 async function fetchMetadata() {
+    if (cachedMetadata) {
+        applyMetadata(cachedMetadata);
+        return;
+    }
     try {
         const response = await fetch('/api/metadata');
         const data = await response.json();
-        
-        const { lang, genre, type, year } = getFilterEls();
-        console.log("Metadata fetched:", data);
-        
-        if (lang) populateDropdown(lang, data.languages);
-        if (genre) populateDropdown(genre, data.genres);
-        if (type) populateDropdown(type, data.types);
-        if (year) populateDropdown(year, data.years);
-        
-        // Add listeners for instant filtering
-        [lang, genre, type, year].forEach(el => {
-            if (el) {
-                el.onchange = () => searchMovies(searchInput.value);
-            }
-        });
-        
-        renderCategories(data.genres);
+        cachedMetadata = data;
+        applyMetadata(data);
     } catch (err) {
         console.error("Failed to fetch metadata", err);
     }
+}
+
+function applyMetadata(data) {
+    const { lang, genre, type, year } = getFilterEls();
+    console.log("Metadata applied:", data);
+    
+    if (lang) populateDropdown(lang, data.languages);
+    if (genre) populateDropdown(genre, data.genres);
+    if (type) populateDropdown(type, data.types);
+    if (year) populateDropdown(year, data.years);
+    
+    // Add listeners for instant filtering
+    [lang, genre, type, year].forEach(el => {
+        if (el) {
+            el.onchange = () => searchMovies(searchInput.value);
+        }
+    });
+    
+    renderCategories(data.genres);
 }
 
 function renderCategories(genres) {
@@ -968,7 +973,7 @@ function renderMovies(movies, container, isWatchlist = false) {
         return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     };
 
-    movies.forEach(async (movie) => {
+    movies.forEach((movie) => {
         const card = document.createElement('div');
         card.className = 'movie-card';
         
@@ -987,7 +992,7 @@ function renderMovies(movies, container, isWatchlist = false) {
 
         card.innerHTML = `
             <div class="poster-container" onclick="watchMovie('${safeMovieLink}', event)">
-                <img id="img-${safeTitle.replace(/\s+/g, '-')}" src="${optimizedUrl}" alt="${safeTitle}" onerror="globalImageFallback(this)">
+                <img loading="lazy" id="img-${safeTitle.replace(/\s+/g, '-')}" src="${optimizedUrl}" alt="${safeTitle}" onerror="globalImageFallback(this)">
                 <div class="badge ${isLive ? 'badge-live' : ''}">${isLive ? 'LIVE' : (movie.Quality || 'HD')}</div>
                 <div class="hd-indicator" style="display: none;"><i class="fas fa-check-circle"></i> HD+</div>
             </div>
@@ -1017,12 +1022,6 @@ function renderMovies(movies, container, isWatchlist = false) {
             </div>
         `;
         container.appendChild(card);
-
-        // BACKGROUND RESOLUTION: Try to upgrade to TMDB API Poster automatically
-        if (posterUrl === 'N/A' || !posterUrl.includes('tmdb.org')) {
-            const imgElement = card.querySelector('img');
-            handleImageError(imgElement, movie.Title);
-        }
     });
 }
 
