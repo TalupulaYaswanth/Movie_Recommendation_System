@@ -13,6 +13,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime, timedelta
 import logging
+from dotenv import load_dotenv
+import asyncio
+import threading
+
+# Load environment variables
+load_dotenv()
 
 # Setup logging to file
 logging.basicConfig(filename='app_errors.log', level=logging.INFO, 
@@ -24,9 +30,8 @@ engine_db = create_engine(DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_db)
 Base = declarative_base()
 
-# --- EXTERNAL API CONFIG ---
-# Paste your TMDB API Key here: https://www.themoviedb.org/settings/api
-TMDB_API_KEY = "c7c066ef756e5e7d2349ec6acb2924f3" 
+# TMDB API Configuration (Load from .env for security)
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "c7c066ef756e5e7d2349ec6acb2924f3") 
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMG_URL = "https://image.tmdb.org/t/p/w500"
 
@@ -81,7 +86,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATA_PATH = "scraper/movierulz_deep_data.csv"
+DATA_PATH = "scraper/vortex_data.csv"
 rec_engine = MovieEngine(DATA_PATH)
 
 class AuthUser(BaseModel):
@@ -240,9 +245,17 @@ async def search(
     results = rec_engine.rank_custom_subset(df, n=200)
     return {"results": results}
 
+METADATA_CACHE = {}
+
 @app.get("/api/metadata")
 async def get_metadata():
-    if rec_engine.movies_df.empty: return {"languages": [], "genres": [], "types": [], "years": []}
+    global METADATA_CACHE
+    if METADATA_CACHE:
+        return METADATA_CACHE
+        
+    if rec_engine.movies_df.empty: 
+        return {"languages": [], "genres": [], "types": [], "years": []}
+        
     languages = ["All"] + sorted([l for l in rec_engine.movies_df['Language'].unique().tolist() if l != 'N/A'])
     genres_set = set()
     for g_str in rec_engine.movies_df['Genre']:
@@ -252,12 +265,14 @@ async def get_metadata():
     genres = ["All"] + sorted(list(genres_set))
     types = ["All"] + sorted([t for t in rec_engine.movies_df['Type'].unique().tolist() if t != 'N/A'])
     years = ["All"] + sorted([y for y in rec_engine.movies_df['Year'].unique().tolist() if y != 'N/A' and str(y) != 'nan'], reverse=True)
-    return {
+    
+    METADATA_CACHE = {
         "languages": languages,
         "genres": genres,
         "types": types,
         "years": [str(y) for y in years]
     }
+    return METADATA_CACHE
 
 # --- WATCH PROGRESS ENDPOINTS ---
 @app.post("/api/progress")
@@ -465,10 +480,9 @@ async def scrape_new_movies(uid: str):
             raise HTTPException(status_code=403, detail="Unauthorized")
         
         from scraper.incremental_updater import run_incremental_update
-        import threading
         
         # Run in background to avoid timeout
-        thread = threading.Thread(target=run_incremental_update, args=(2,))
+        thread = threading.Thread(target=run_incremental_update, args=(1,))
         thread.start()
         
         return {"status": "success", "message": "Scraper started in background. New movies will appear shortly."}
@@ -483,11 +497,16 @@ async def upgrade_hd_posters(uid: str):
         if not owner or not owner.is_owner:
             raise HTTPException(status_code=403, detail="Unauthorized")
         
-        from scraper.hd_image_updater import fix_na_values
-        import threading
+        from scraper.update_csv_posters import run_hd_update
         
-        # Run in background
-        thread = threading.Thread(target=fix_na_values)
+        # Run in background via a helper that creates a new event loop for the async function
+        def run_async_in_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(run_hd_update())
+            loop.close()
+
+        thread = threading.Thread(target=run_async_in_thread)
         thread.start()
         
         return {"status": "success", "message": "HD Upgrade started! Finding posters on Google/TMDB..."}
